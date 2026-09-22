@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1~300 數學隨機卡 (含節拍器)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+    }
+    body {
+      background-color: #f0f8ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .card-container {
+      background-color: #ffffff;
+      width: 320px;
+      height: 240px;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      border: 6px solid #4a90e2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 25px;
+      transition: transform 0.1s ease;
+    }
+    .number-display {
+      font-size: 96px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .chinese-display {
+      font-size: 24px;
+      color: #7f8c8d;
+      margin-top: 10px;
+      min-height: 36px;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .btn-draw {
+      background-color: #ff6b6b;
+      color: white;
+      font-size: 22px;
+      padding: 12px 30px;
+      box-shadow: 0 4px 0 #d63031;
+    }
+    .btn-draw:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #d63031;
+    }
+    .btn-speed {
+      background-color: #e0e0e0;
+      color: #333;
+    }
+    .btn-speed.active {
+      background-color: #4a90e2;
+      color: white;
+      box-shadow: 0 3px 0 #2980b9;
+    }
+    .btn-stop {
+      background-color: #e74c3c;
+      color: white;
+    }
+    .sound-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      color: #333;
+      margin-top: 5px;
+      cursor: pointer;
+    }
+    .sound-toggle input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card-container" id="card">
+    <div class="number-display" id="number">?</div>
+    <div class="chinese-display" id="chineseText">選擇模式開始</div>
+  </div>
+
+  <div class="controls">
+    <!-- 單次抽牌 -->
+    <button class="btn btn-draw" onclick="manualDraw()">手動抽一張</button>
+    
+    <!-- 自動出牌秒數選擇 -->
+    <div class="button-group">
+      <button class="btn btn-speed" onclick="startAuto(1, this)">1秒</button>
+      <button class="btn btn-speed" onclick="startAuto(2, this)">2秒</button>
+      <button class="btn btn-speed" onclick="startAuto(3, this)">3秒</button>
+      <button class="btn btn-speed" onclick="startAuto(5, this)">5秒</button>
+      <button class="btn btn-stop" onclick="stopAuto()">暫停自動</button>
+    </div>
+
+    <!-- 音效開關 -->
+    <label class="sound-toggle">
+      <input type="checkbox" id="soundEnabled" checked>
+      開啟節拍器聲音
+    </label>
+  </div>
+
+  <script>
+    let timer = null;
+    let audioCtx = null;
+
+    // 播放節拍器聲音 (Web Audio API)
+    function playBeep() {
+      const soundCheckbox = document.getElementById("soundEnabled");
+      if (!soundCheckbox.checked) return;
+
+      // 初始化 AudioContext (適應瀏覽器自動播放政策)
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      // 建立振盪器與音量控制
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";        // 正弦波（柔和的「嗶」聲）
+      osc.frequency.value = 800; // 聲音頻率 800Hz
+
+      // 音量漸弱包絡線 (防止突兀的切斷聲)
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1); // 發聲 0.1 秒
+    }
+
+    // 數字轉中文唸法 (適用 1~300)
+    function numberToChinese(num) {
+      if (num < 1 || num > 300) return "";
+      const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+      let hundred = Math.floor(num / 100);
+      let ten = Math.floor((num % 100) / 10);
+      let one = num % 10;
+      let result = "";
+
+      if (hundred > 0) result += digits[hundred] + "百";
+      
+      if (ten > 0) {
+        if (hundred === 0 && ten === 1) {
+          result += "十";
+        } else {
+          result += digits[ten] + "十";
+        }
+      } else if (hundred > 0 && one > 0) {
+        result += "零";
+      }
+
+      if (one > 0) result += digits[one];
+      return result;
+    }
+
+    // 抽卡核心邏輯
+    function drawCard() {
+      const randomNum = Math.floor(Math.random() * 300) + 1;
+      document.getElementById("number").innerText = randomNum;
+      document.getElementById("chineseText").innerText = numberToChinese(randomNum);
+
+      // 播放音效
+      playBeep();
+
+      // 卡片縮放動畫
+      const card = document.getElementById("card");
+      card.style.transform = "scale(0.95)";
+      setTimeout(() => { card.style.transform = "scale(1)"; }, 100);
+    }
+
+    // 手動抽卡
+    function manualDraw() {
+      stopAuto();
+      drawCard();
+    }
+
+    // 開始自動出牌
+    function startAuto(seconds, btnElement) {
+      stopAuto();
+      
+      btnElement.classList.add("active");
+      drawCard();
+      
+      timer = setInterval(drawCard, seconds * 1000);
+    }
+
+    // 停止自動出牌
+    function stopAuto() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      const buttons = document.querySelectorAll('.btn-speed');
+      buttons.forEach(btn => btn.classList.remove('active'));
+    }
+  </script>
+
+</body>
+</html>
