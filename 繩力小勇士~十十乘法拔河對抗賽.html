@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>繩力小勇士~十十乘法拔河對抗賽</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', '微軟正黑體', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #f0fdf4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            position: relative;
+            width: 100%;
+            max-width: 980px;
+        }
+
+        h1 {
+            color: #15803d;
+            font-size: 2.2rem;
+            text-shadow: 2px 2px 0px #bbf7d0;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #475569;
+            margin-top: 4px;
+        }
+
+        /* 音樂控制按鈕 */
+        .bgm-btn {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+            background: #ffffff;
+            border: 2px solid #16a34a;
+            color: #15803d;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+
+        .bgm-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 中間拔河舞台 */
+        .tug-stage {
+            width: 100%;
+            max-width: 980px;
+            background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 60%, #86efac 60%, #15803d 100%);
+            border: 6px solid #1e293b;
+            border-radius: 24px;
+            padding: 15px 20px;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scores-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .score-a { color: #1d4ed8; text-shadow: 1px 1px 0 #fff; }
+        .score-b { color: #b91c1c; text-shadow: 1px 1px 0 #fff; }
+
+        /* 拔河競技場 */
+        .tug-arena {
+            position: relative;
+            height: 150px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* 兩邊真實拔河人物 (SVG) */
+        .character-container {
+            width: 170px;
+            height: 140px;
+            z-index: 10;
+            transition: transform 0.2s ease;
+        }
+
+        .char-a { transform-origin: bottom right; }
+        .char-b { transform-origin: bottom left; }
+
+        /* 繩子滑動軌道 */
+        .rope-container {
+            position: absolute;
+            left: 130px;
+            right: 130px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* 逼真粗麻繩 */
+        .sliding-rope {
+            position: absolute;
+            width: 170%;
+            left: -35%;
+            height: 16px;
+            background: repeating-linear-gradient(45deg, #b45309, #b45309 10px, #d97706 10px, #d97706 20px);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 中間勝負紅旗與繩結 */
+        .center-knot {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 38px;
+            height: 38px;
+            background: #ef4444;
+            border: 4px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            z-index: 5;
+        }
+
+        /* 界線 */
+        .boundary-line {
+            position: absolute;
+            top: 10px;
+            bottom: 10px;
+            width: 4px;
+            z-index: 2;
+        }
+
+        .line-center {
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 2px dashed #334155;
+        }
+
+        .line-win-a { left: 20%; border-left: 4px solid #2563eb; }
+        .line-win-b { right: 20%; border-right: 4px solid #dc2626; }
+
+        /* 答對時的全力後倒擺拉動畫 */
+        .pull-active-a .char-a { animation: pull-effort-a 0.4s ease-in-out; }
+        .pull-active-b .char-b { animation: pull-effort-b 0.4s ease-in-out; }
+
+        @keyframes pull-effort-a {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-15deg) translateX(-15px) translateY(5px); }
+        }
+
+        @keyframes pull-effort-b {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(15deg) translateX(15px) translateY(5px); }
+        }
+
+        /* 下方題目與輸入區域 */
+        .game-field {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1000px;
+            gap: 20px;
+            flex: 1;
+            margin-top: 15px;
+        }
+
+        .player-box {
+            flex: 1;
+            background: white;
+            border-radius: 24px;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+
+        .player-box.player-a { border: 5px solid #93c5fd; }
+        .player-box.player-b { border: 5px solid #fca5a5; }
+
+        .player-title { font-size: 1.4rem; font-weight: bold; }
+        .player-a .player-title { color: #1d4ed8; }
+        .player-b .player-title { color: #b91c1c; }
+
+        .question-display {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 8px 0;
+        }
+
+        .answer-box {
+            display: inline-block;
+            min-width: 75px;
+            height: 65px;
+            line-height: 55px;
+            border: 4px dashed #64748b;
+            border-radius: 12px;
+            background: #f8fafc;
+            text-align: center;
+            color: #0f172a;
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 270px;
+            margin-top: auto;
+        }
+
+        .num-btn {
+            background: #f1f5f9;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 10px 0;
+            cursor: pointer;
+            color: #334155;
+        }
+
+        .num-btn:active { transform: scale(0.95); background: #e2e8f0; }
+
+        .btn-clear { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+        .btn-enter { background: #dcfce7; color: #166534; border-color: #86efac; grid-column: span 2; }
+
+        /* 獲勝彈跳視窗遮罩 */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 101;
+        }
+
+        .overlay.active .modal { transform: scale(1); }
+
+        .winner-title { font-size: 2.3rem; font-weight: bold; margin-bottom: 20px; }
+
+        .btn-restart {
+            font-size: 1.4rem;
+            font-weight: bold;
+            padding: 12px 30px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(22, 163, 74, 0.4);
+            transition: transform 0.1s ease;
+        }
+
+        .btn-restart:active { transform: scale(0.95); }
+
+        /* 慶祝彩帶煙火 Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.4s ease-in-out; }
+    </style>
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <header>
+        <h1>繩力小勇士~十十乘法拔河對抗賽</h1>
+        <div class="subtitle">回答正確即可將紅繩拉向己方，最先淨勝 3 題者獲勝！</div>
+        <button class="bgm-btn" id="bgm-toggle" onclick="toggleBGM()">🎵 背景音樂：開</button>
+    </header>
+
+    <!-- 中間拔河舞台 -->
+    <div class="tug-stage" id="tug-stage">
+        <div class="scores-header">
+            <span class="score-a">🟦 藍隊領先: <span id="score-a">0</span> 格</span>
+            <span class="score-b">🟥 紅隊領先: <span id="score-b">0</span> 格</span>
+        </div>
+
+        <div class="tug-arena">
+            <!-- 左邊藍隊 -->
+            <div class="character-container char-a">
+                <svg viewBox="0 0 200 160" width="100%" height="100%">
+                    <ellipse cx="140" cy="148" rx="16" ry="7" fill="#1e293b"/>
+                    <ellipse cx="60" cy="142" rx="14" ry="7" fill="#1e293b"/>
+                    <path d="M 60 140 L 80 110 L 105 105" stroke="#1d4ed8" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 140 145 L 125 115 L 110 105" stroke="#2563eb" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 110 105 L 55 65" stroke="#2563eb" stroke-width="32" stroke-linecap="round"/>
+                    <path d="M 110 105 L 55 65" stroke="#3b82f6" stroke-width="26" stroke-linecap="round"/>
+                    <circle cx="38" cy="45" r="18" fill="#fdba74"/>
+                    <path d="M 22 40 Q 30 20 52 32 Q 40 50 22 40 Z" fill="#1e293b"/>
+                    <circle cx="44" cy="45" r="2.5" fill="#000"/>
+                    <path d="M 40 52 Q 46 56 48 50" stroke="#000" stroke-width="2" fill="none"/>
+                    <path d="M 65 65 L 125 80" stroke="#fdba74" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M 75 70 L 140 82" stroke="#fba565" stroke-width="10" stroke-linecap="round"/>
+                    <circle cx="125" cy="80" r="7" fill="#fdba74"/>
+                    <circle cx="140" cy="82" r="7" fill="#fba5a5"/>
+                </svg>
+            </div>
+
+            <!-- 繩子軌道 -->
+            <div class="rope-container">
+                <div class="boundary-line line-win-a" title="藍隊勝利極限線"></div>
+                <div class="boundary-line line-center" title="中心線"></div>
+                <div class="boundary-line line-win-b" title="紅隊勝利極限線"></div>
+
+                <div class="sliding-rope" id="sliding-rope">
+                    <div class="center-knot">🚩</div>
+                </div>
+            </div>
+
+            <!-- 右邊紅隊 -->
+            <div class="character-container char-b">
+                <svg viewBox="0 0 200 160" width="100%" height="100%">
+                    <ellipse cx="60" cy="148" rx="16" ry="7" fill="#1e293b"/>
+                    <ellipse cx="140" cy="142" rx="14" ry="7" fill="#1e293b"/>
+                    <path d="M 140 140 L 120 110 L 95 105" stroke="#b91c1c" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 60 145 L 75 115 L 90 105" stroke="#dc2626" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 90 105 L 145 65" stroke="#dc2626" stroke-width="32" stroke-linecap="round"/>
+                    <path d="M 90 105 L 145 65" stroke="#ef4444" stroke-width="26" stroke-linecap="round"/>
+                    <circle cx="162" cy="45" r="18" fill="#fdba74"/>
+                    <path d="M 178 40 Q 170 20 148 32 Q 160 50 178 40 Z" fill="#991b1b"/>
+                    <circle cx="156" cy="45" r="2.5" fill="#000"/>
+                    <path d="M 160 52 Q 154 56 152 50" stroke="#000" stroke-width="2" fill="none"/>
+                    <path d="M 135 65 L 75 80" stroke="#fdba74" stroke-width="10" stroke-linecap="round"/>
+                    <path d="M 125 70 L 60 82" stroke="#fba565" stroke-width="10" stroke-linecap="round"/>
+                    <circle cx="75" cy="80" r="7" fill="#fdba74"/>
+                    <circle cx="60" cy="82" r="7" fill="#fba5a5"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 玩家答題區 -->
+    <div class="game-field">
+        <!-- 藍隊 -->
+        <div class="player-box player-a" id="box-a">
+            <div class="player-title">藍隊 (玩家 A)</div>
+            <div class="question-display">
+                <span id="q-a">2×2</span>=
+                <div class="answer-box" id="ans-a">?</div>
+            </div>
+            <div class="numpad">
+                <button class="num-btn" onclick="pressNum('a', '1')">1</button>
+                <button class="num-btn" onclick="pressNum('a', '2')">2</button>
+                <button class="num-btn" onclick="pressNum('a', '3')">3</button>
+                <button class="num-btn" onclick="pressNum('a', '4')">4</button>
+                <button class="num-btn" onclick="pressNum('a', '5')">5</button>
+                <button class="num-btn" onclick="pressNum('a', '6')">6</button>
+                <button class="num-btn" onclick="pressNum('a', '7')">7</button>
+                <button class="num-btn" onclick="pressNum('a', '8')">8</button>
+                <button class="num-btn" onclick="pressNum('a', '9')">9</button>
+                <button class="num-btn btn-clear" onclick="pressClear('a')">C</button>
+                <button class="num-btn" onclick="pressNum('a', '0')">0</button>
+                <button class="num-btn btn-enter" onclick="submitAns('a')">確定</button>
+            </div>
+        </div>
+
+        <!-- 紅隊 -->
+        <div class="player-box player-b" id="box-b">
+            <div class="player-title">紅隊 (玩家 B)</div>
+            <div class="question-display">
+                <span id="q-b">2×2</span>=
+                <div class="answer-box" id="ans-b">?</div>
+            </div>
+            <div class="numpad">
+                <button class="num-btn" onclick="pressNum('b', '1')">1</button>
+                <button class="num-btn" onclick="pressNum('b', '2')">2</button>
+                <button class="num-btn" onclick="pressNum('b', '3')">3</button>
+                <button class="num-btn" onclick="pressNum('b', '4')">4</button>
+                <button class="num-btn" onclick="pressNum('b', '5')">5</button>
+                <button class="num-btn" onclick="pressNum('b', '6')">6</button>
+                <button class="num-btn" onclick="pressNum('b', '7')">7</button>
+                <button class="num-btn" onclick="pressNum('b', '8')">8</button>
+                <button class="num-btn" onclick="pressNum('b', '9')">9</button>
+                <button class="num-btn btn-clear" onclick="pressClear('b')">C</button>
+                <button class="num-btn" onclick="pressNum('b', '0')">0</button>
+                <button class="num-btn btn-enter" onclick="submitAns('b')">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 獲勝彈跳視窗區 -->
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <div class="winner-title" id="winner-text">🎉 藍隊獲勝！</div>
+            <button class="btn-restart" onclick="resetGame()">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 音效與音樂合成系統 (Web Audio API) ---
+        let audioCtx = null;
+        let isBgmEnabled = true;
+        let bgmTimer = null;
+        let bgmStep = 0;
+        let bgmGainNode = null; 
+        let activeBgmNodes = []; // 追蹤所有發聲中的 BGM 振盪器與聲道
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            startBGM();
+        }
+
+        function toggleBGM() {
+            isBgmEnabled = !isBgmEnabled;
+            const btn = document.getElementById('bgm-toggle');
+            if (isBgmEnabled) {
+                btn.innerText = "🎵 背景音樂：開";
+                startBGM();
+            } else {
+                btn.innerText = "🔇 背景音樂：關";
+                stopBGM();
+            }
+        }
+
+        // 啟動背景音樂
+        function startBGM() {
+            if (!isBgmEnabled || !audioCtx) return;
+
+            // 確保先完全關閉之前的 BGM
+            stopBGM();
+
+            bgmGainNode = audioCtx.createGain();
+            bgmGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+            bgmGainNode.connect(audioCtx.destination);
+
+            const notes = [220, 233.08, 220, 261.63, 220, 233.08, 207.65, 220]; 
+            bgmTimer = setInterval(() => {
+                if (!isBgmEnabled || !audioCtx || !bgmGainNode) return;
+
+                const now = audioCtx.currentTime;
+
+                // 1. 低音鼓點 (Kick)
+                if (bgmStep % 2 === 0) {
+                    const kick = audioCtx.createOscillator();
+                    const kickGain = audioCtx.createGain();
+                    kick.frequency.setValueAtTime(130, now);
+                    kick.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+                    kickGain.gain.setValueAtTime(0.25, now);
+                    kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                    
+                    kick.connect(kickGain);
+                    kickGain.connect(bgmGainNode);
+                    
+                    kick.start(now);
+                    kick.stop(now + 0.12);
+                    activeBgmNodes.push(kick);
+                }
+
+                // 2. 緊張感短音旋律
+                const synth = audioCtx.createOscillator();
+                const synthGain = audioCtx.createGain();
+                synth.type = 'sawtooth';
+                synth.frequency.setValueAtTime(notes[bgmStep % notes.length], now);
+
+                synthGain.gain.setValueAtTime(0.06, now);
+                synthGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                synth.connect(synthGain);
+                synthGain.connect(bgmGainNode);
+                
+                synth.start(now);
+                synth.stop(now + 0.1);
+                activeBgmNodes.push(synth);
+
+                // 自動清理已播放完畢的聲音節點引用
+                if (activeBgmNodes.length > 20) {
+                    activeBgmNodes = activeBgmNodes.slice(-10);
+                }
+
+                bgmStep++;
+            }, 220);
+        }
+
+        // 強制完全停止背景音樂（徹底清除所有排程）
+        function stopBGM() {
+            // 1. 清除循環排程 Timer
+            if (bgmTimer) {
+                clearInterval(bgmTimer);
+                bgmTimer = null;
+            }
+
+            // 2. 停止並斷開所有正在發聲/排程中的音訊節點
+            activeBgmNodes.forEach(node => {
+                try {
+                    node.stop();
+                    node.disconnect();
+                } catch (e) {
+                    // 忽略已停止節點引發的異常
+                }
+            });
+            activeBgmNodes = [];
+
+            // 3. 瞬間將總背景音量切斷
+            if (bgmGainNode && audioCtx) {
+                try {
+                    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+                    bgmGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                    bgmGainNode.disconnect();
+                } catch (e) {}
+                bgmGainNode = null;
+            }
+        }
+
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } 
+            else if (type === 'pull') { // 答對拉繩音效
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(350, now + 0.2);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } 
+            else if (type === 'wrong') { // 答錯音效
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.setValueAtTime(110, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } 
+            else if (type === 'win') { // 勝利歡活和弦 + 歡呼聲
+                // 1. 璀璨勝利階梯和弦
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1567.98]; // C5, E5, G5, C6, G6
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+                    gain.gain.setValueAtTime(0.35, now + idx * 0.09);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.8);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.09);
+                    osc.stop(now + idx * 0.09 + 0.8);
+                });
+
+                // 2. 模擬現場群眾歡呼聲浪 (Cheering Noise)
+                const bufferSize = audioCtx.sampleRate * 1.5;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1; // 白噪音
+                }
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1000, now);
+                filter.Q.setValueAtTime(1.5, now);
+
+                const cheerGain = audioCtx.createGain();
+                cheerGain.gain.setValueAtTime(0.01, now);
+                cheerGain.gain.linearRampToValueAtTime(0.2, now + 0.2); // 漸強歡呼
+                cheerGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5); // 漸隱
+
+                noise.connect(filter);
+                filter.connect(cheerGain);
+                cheerGain.connect(audioCtx.destination);
+
+                noise.start(now);
+                noise.stop(now + 1.5);
+            }
+        }
+
+        // --- 彩帶煙火粒子系統 (Canvas API) ---
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationFrameId = null;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function launchConfetti() {
+            particles = [];
+            const colors = ['#f43f5e', '#3b82f6', '#eab308', '#22c55e', '#a855f7', '#ec4899'];
+
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 0.7) * 18,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 10,
+                    opacity: 1
+                });
+            }
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            updateParticles();
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.opacity -= 0.008;
+                p.rotation += p.rotationSpeed;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.globalAlpha = Math.max(p.opacity, 0);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+
+                if (p.opacity <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+
+            if (particles.length > 0) {
+                animationFrameId = requestAnimationFrame(updateParticles);
+            }
+        }
+
+        // --- 遊戲核心邏輯 ---
+        let knotPosition = 0; // -3 (藍勝) ~ +3 (紅勝)
+        const WIN_POSITION = 3;
+
+        let state = {
+            a: { num1: 0, num2: 0, target: 0, currentInput: "" },
+            b: { num1: 0, num2: 0, target: 0, currentInput: "" }
+        };
+
+        function generateQuestion() {
+            const n1 = Math.floor(Math.random() * 8) + 2; // 2~9
+            const n2 = Math.floor(Math.random() * 8) + 2; // 2~9
+            return { num1: n1, num2: n2, target: n1 * n2 };
+        }
+
+        function setNextQuestion(player) {
+            const q = generateQuestion();
+            state[player].num1 = q.num1;
+            state[player].num2 = q.num2;
+            state[player].target = q.target;
+            state[player].currentInput = "";
+
+            document.getElementById(`q-${player}`).innerText = `${q.num1}×${q.num2}`;
+            updateDisplay(player);
+        }
+
+        function pressNum(player, num) {
+            playSound('click');
+            if (state[player].currentInput.length < 2) {
+                state[player].currentInput += num;
+                updateDisplay(player);
+            }
+        }
+
+        function pressClear(player) {
+            playSound('click');
+            state[player].currentInput = "";
+            updateDisplay(player);
+        }
+
+        function updateDisplay(player) {
+            const box = document.getElementById(`ans-${player}`);
+            box.innerText = state[player].currentInput || "?";
+        }
+
+        function submitAns(player) {
+            const inputVal = parseInt(state[player].currentInput, 10);
+            const boxEl = document.getElementById(`box-${player}`);
+
+            if (isNaN(inputVal)) return;
+
+            if (inputVal === state[player].target) {
+                playSound('pull');
+                if (player === 'a') {
+                    knotPosition--;
+                } else {
+                    knotPosition++;
+                }
+
+                triggerPullEffect(player);
+                updateRopeUI();
+                checkWin();
+                setNextQuestion(player);
+            } else {
+                playSound('wrong');
+                boxEl.classList.add('shake');
+                setTimeout(() => boxEl.classList.remove('shake'), 400);
+                pressClear(player);
+            }
+        }
+
+        function triggerPullEffect(player) {
+            const stage = document.getElementById('tug-stage');
+            stage.classList.add(`pull-active-${player}`);
+            setTimeout(() => {
+                stage.classList.remove(`pull-active-${player}`);
+            }, 400);
+        }
+
+        function updateRopeUI() {
+            const rope = document.getElementById('sliding-rope');
+            const leftPercent = -35 + (knotPosition * 11.6);
+            rope.style.left = `${leftPercent}%`;
+
+            document.getElementById('score-a').innerText = knotPosition < 0 ? Math.abs(knotPosition) : 0;
+            document.getElementById('score-b').innerText = knotPosition > 0 ? knotPosition : 0;
+        }
+
+        function checkWin() {
+            const overlay = document.getElementById('overlay');
+            const winnerText = document.getElementById('winner-text');
+
+            if (knotPosition <= -WIN_POSITION || knotPosition >= WIN_POSITION) {
+                // 第一步：強制徹底切斷背景音樂發聲
+                stopBGM();
+
+                // 第二步：顯示獲勝跳窗
+                if (knotPosition <= -WIN_POSITION) {
+                    winnerText.innerText = "🎉 藍隊 獲勝！";
+                    winnerText.style.color = "#1d4ed8";
+                } else {
+                    winnerText.innerText = "🎉 紅隊 獲勝！";
+                    winnerText.style.color = "#b91c1c";
+                }
+                overlay.classList.add('active');
+
+                // 第三步：觸發勝利用歡活音效與彩帶噴發
+                playSound('win');
+                launchConfetti();
+            }
+        }
+
+        function resetGame() {
+            knotPosition = 0;
+            updateRopeUI();
+            setNextQuestion('a');
+            setNextQuestion('b');
+            document.getElementById('overlay').classList.remove('active');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            startBGM(); // 關閉彈窗重置時，恢復播放背景音樂
+        }
+
+        // 首頁點擊任意處啟動音效與音樂
+        document.body.addEventListener('click', () => {
+            initAudio();
+        }, { once: true });
+
+        resetGame();
+    </script>
+</body>
+</html>
