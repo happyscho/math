@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>18以內的加減法打地鼠遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background: linear-gradient(135deg, #7ec850 0%, #3e8e41 100%);
+        }
+        .font-game {
+            font-family: 'Fredoka One', 'Noto Sans TC', cursive;
+        }
+
+        /* Hole styling with deep dirt gradient */
+        .hole-container {
+            background: radial-gradient(circle at 50% 40%, #1e1107 0%, #3d230d 70%, #573313 100%);
+            box-shadow: inset 0 12px 20px rgba(0, 0, 0, 0.85), 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 4px solid #2d1808;
+        }
+
+        /* Mole pop up animation transition */
+        .mole-wrapper {
+            transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.25);
+            transform: translateY(115%);
+            will-change: transform;
+        }
+        .mole-wrapper.up {
+            transform: translateY(0%);
+        }
+
+        /* Shake & Red Glow animation for incorrect clicks */
+        @keyframes mole-wrong {
+            0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 transparent); }
+            20% { transform: translateY(0) scale(1.1) rotate(-10deg); filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.9)); }
+            40% { transform: translateY(0) scale(1.1) rotate(10deg); filter: drop-shadow(0 0 16px rgba(239, 68, 68, 1)); }
+            60% { transform: translateY(0) scale(1.1) rotate(-6deg); filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.9)); }
+            80% { transform: translateY(0) scale(1.1) rotate(6deg); }
+        }
+        .wrong-effect {
+            animation: mole-wrong 0.3s ease-in-out;
+        }
+
+        /* Correct hit pop effect */
+        @keyframes hit-pop {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(0) scale(1.25) rotate(8deg); filter: brightness(1.3); }
+            100% { transform: translateY(115%) scale(0.8); }
+        }
+        .hit-effect {
+            animation: hit-pop 0.3s ease-out forwards;
+        }
+
+        /* Floating Feedback text animation (+1 or MISS) */
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+        .float-feedback {
+            animation: float-up 0.75s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* Hammer custom cursor */
+        .hammer-cursor {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="%23fbbf24" stroke="%2378350f" stroke-width="2"><path d="m15 5 4 4"/><path d="M13 7 4 16l2 2 9-9"/><path d="m8 12 4 4"/></svg>') 8 8, auto;
+        }
+
+        /* Confetti canvas overlay */
+        #confetti-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 hammer-cursor overflow-x-hidden relative">
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="w-full max-w-2xl bg-amber-100 rounded-3xl border-8 border-amber-800 p-4 sm:p-6 shadow-2xl relative z-10 my-auto">
+        
+        <!-- Sound Toggle Button -->
+        <div class="absolute top-4 right-4 z-20">
+            <button id="btn-sound" class="p-2 sm:p-3 bg-amber-200 hover:bg-amber-300 border-2 border-amber-800 rounded-full text-amber-900 shadow-md font-bold transition-all text-xl flex items-center justify-center" title="開啟/關閉音效">
+                🔊
+            </button>
+        </div>
+
+        <!-- Header Title -->
+        <header class="text-center mb-3 sm:mb-5">
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-amber-900 font-game tracking-wider drop-shadow-md">
+                🐹 數學打地鼠 🔨
+            </h1>
+            <p class="text-amber-800 text-xs sm:text-sm mt-1 font-bold">18以內的加減法趣味心算</p>
+        </header>
+
+        <!-- Start Screen -->
+        <div id="screen-start" class="flex flex-col items-center justify-center py-6 text-center space-y-5">
+            <div class="bg-amber-50 border-4 border-amber-400 p-5 sm:p-6 rounded-2xl max-w-md shadow-inner text-amber-950">
+                <h2 class="text-xl sm:text-2xl font-black mb-3 text-amber-900 flex items-center justify-center gap-2">
+                    <span>🎮</span> 遊戲規則
+                </h2>
+                <ul class="text-left text-sm sm:text-base space-y-2.5 font-bold text-amber-800 list-disc list-inside">
+                    <li>題目為 18 以內的加減法，絕對<span class="text-purple-700 font-black">無 +0 或 -0</span>。</li>
+                    <li>地鼠每次隨機冒出 <span class="text-emerald-600 font-black">2～6 隻</span>。</li>
+                    <li>點擊<span class="text-emerald-700 font-black">正確答案</span>地鼠得 1 分；點擊<span class="text-red-600 font-black">錯誤答案</span>不計分。</li>
+                    <li>每次點擊後（無論對錯），<span class="text-amber-900 font-black">地鼠會全部縮回，換新題目並重新彈跳冒出</span>！</li>
+                    <li>答對 <span class="text-amber-900 font-black">10 題</span>即可獲勝！</li>
+                </ul>
+            </div>
+
+            <button id="btn-start" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black text-2xl sm:text-3xl rounded-2xl border-b-8 border-emerald-800 shadow-xl transform active:translate-y-1 transition-all flex items-center gap-3">
+                🚀 開始遊戲！
+            </button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="screen-game" class="hidden flex-col items-center relative">
+            <!-- Floating Feedback Overlay Container -->
+            <div id="feedback-layer" class="absolute inset-0 pointer-events-none z-30 overflow-hidden"></div>
+
+            <!-- Game Stats Dashboard -->
+            <div class="w-full flex flex-col gap-2 mb-3 sm:mb-4 px-1 sm:px-3">
+                <div class="flex justify-between items-center">
+                    <div class="bg-amber-900 text-amber-100 px-3 sm:px-5 py-2 rounded-2xl border-2 border-amber-950 flex items-center gap-2 shadow font-black text-sm sm:text-lg">
+                        🎯 正確：<span id="score-text" class="text-yellow-400 text-xl sm:text-2xl font-game">0</span> / 10
+                    </div>
+                    <div class="bg-amber-900 text-amber-100 px-3 sm:px-5 py-2 rounded-2xl border-2 border-amber-950 flex items-center gap-2 shadow font-black text-sm sm:text-lg">
+                        ⏱️ 時間：<span id="time-text" class="text-yellow-400 text-xl sm:text-2xl font-game">0.0</span> 秒
+                    </div>
+                </div>
+                <!-- Progress Bar -->
+                <div class="w-full bg-amber-950 h-3.5 rounded-full overflow-hidden border-2 border-amber-900 shadow-inner">
+                    <div id="progress-bar" class="bg-gradient-to-r from-yellow-400 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Math Question Board -->
+            <div class="w-full bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 py-3 sm:py-4 px-6 rounded-2xl text-center mb-4 sm:mb-6 border-4 border-amber-950 shadow-xl relative overflow-hidden">
+                <div class="text-xs sm:text-sm font-bold text-amber-200 mb-1">算出答案並擊中正確地鼠！</div>
+                <div id="question-text" class="text-4xl sm:text-6xl font-black text-yellow-300 font-game tracking-widest drop-shadow-lg">
+                    8 + 5 = ?
+                </div>
+            </div>
+
+            <!-- 6 Mole Holes Grid -->
+            <div id="holes-grid" class="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-lg mx-auto p-2 bg-emerald-700/30 rounded-3xl border-4 border-emerald-800/40">
+                <!-- Dynamically populated by JS -->
+            </div>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="screen-victory" class="hidden flex-col items-center py-6 text-center space-y-5">
+            <div class="text-6xl sm:text-7xl animate-bounce">🏆</div>
+            <h2 class="text-3xl sm:text-5xl font-black text-amber-900 font-game tracking-wider">過關大勝利！</h2>
+            
+            <div class="bg-amber-50 border-4 border-amber-400 p-6 rounded-3xl w-full max-w-md shadow-inner text-amber-950 space-y-4">
+                <p class="text-lg font-bold text-amber-800">成功答對 10 道題！</p>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-amber-200/80 p-3 rounded-2xl border-2 border-amber-300">
+                        <p class="text-xs font-bold text-amber-800">⏱️ 通關耗時</p>
+                        <p id="final-time" class="text-2xl sm:text-3xl font-black text-amber-950 font-game mt-1">0.0 秒</p>
+                    </div>
+                    <div class="bg-amber-200/80 p-3 rounded-2xl border-2 border-amber-300">
+                        <p class="text-xs font-bold text-amber-800">❌ 失誤點錯</p>
+                        <p id="final-misses" class="text-2xl sm:text-3xl font-black text-red-600 font-game mt-1">0 次</p>
+                    </div>
+                </div>
+
+                <p id="feedback-text" class="text-base sm:text-lg font-black text-emerald-700 pt-1">
+                    太棒了！算得又快又準！⚡
+                </p>
+            </div>
+
+            <button id="btn-restart" class="px-8 py-4 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-black text-2xl sm:text-3xl rounded-2xl border-b-8 border-amber-800 shadow-xl transform active:translate-y-1 transition-all flex items-center gap-3">
+                🔄 再玩一次
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
+        // Web Audio API Synthesizer (No external sound assets needed)
+        // -------------------------------------------------------------
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggleSound() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            playPop() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(750, this.ctx.currentTime + 0.09);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.09);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playHitCorrect() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                [523.25, 659.25, 783.99].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.06);
+
+                    gain.gain.setValueAtTime(0.3, now + i * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + i * 0.06);
+                    osc.stop(now + i * 0.06 + 0.26);
+                });
+            }
+
+            playHitWrong() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(90, now + 0.25);
+
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.26);
+            }
+
+            playVictory() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                const now = this.ctx.currentTime;
+
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+                    const duration = idx === notes.length - 1 ? 0.6 : 0.2;
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.12);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + idx * 0.12);
+                    osc.stop(now + idx * 0.12 + duration + 0.05);
+                });
+            }
+        }
+
+        const audio = new SoundEngine();
+
+        // -------------------------------------------------------------
+        // Game State Variables
+        // -------------------------------------------------------------
+        let score = 0;
+        let misses = 0;
+        const TARGET_SCORE = 10;
+        let startTime = 0;
+        let timerInterval = null;
+        let popUpLoopTimeout = null;
+        let hideTimeout = null;
+        let currentProblem = null;
+        let activeMolesInHoles = [];
+        let isTransitioning = false; // Prevents spam clicking during refresh
+        const HOLE_COUNT = 6;
+        const POPUP_DURATION = 3200;
+
+        // -------------------------------------------------------------
+        // Math Problem Generator (Addition & Subtraction within 18)
+        // EXCLUDING ALL +0 and -0
+        // -------------------------------------------------------------
+        function generateMathProblem() {
+            const isAddition = Math.random() > 0.5;
+            let num1, num2, answer, text;
+
+            if (isAddition) {
+                // Addition within 18, NO zero terms (+0 excluded)
+                answer = Math.floor(Math.random() * 17) + 2; // 2 to 18
+                num1 = Math.floor(Math.random() * (answer - 1)) + 1; // 1 to answer-1
+                num2 = answer - num1; // Guaranteed >= 1
+                text = `${num1} + ${num2} = ?`;
+            } else {
+                // Subtraction within 18, NO zero subtrahend (-0 excluded)
+                num1 = Math.floor(Math.random() * 17) + 2; // 2 to 18
+                num2 = Math.floor(Math.random() * (num1 - 1)) + 1; // 1 to num1-1
+                answer = num1 - num2;
+                text = `${num1} - ${num2} = ?`;
+            }
+
+            return {
+                text: text,
+                answer: answer
+            };
+        }
+
+        function generateDistractors(correctAnswer, count) {
+            const set = new Set();
+            let attempts = 0;
+            
+            while (set.size < count && attempts < 50) {
+                attempts++;
+                const offset = (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1);
+                let fake = correctAnswer + offset;
+                
+                if (fake < 1 || fake > 18 || fake === correctAnswer) {
+                    fake = Math.floor(Math.random() * 18) + 1;
+                }
+                
+                if (fake !== correctAnswer) {
+                    set.add(fake);
+                }
+            }
+            return Array.from(set);
+        }
+
+        // -------------------------------------------------------------
+        // UI Creation - Mole Holes
+        // -------------------------------------------------------------
+        function buildHolesGrid() {
+            const grid = document.getElementById('holes-grid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < HOLE_COUNT; i++) {
+                const hole = document.createElement('div');
+                hole.className = 'hole-container relative w-full pt-[100%] rounded-full overflow-hidden cursor-pointer';
+                hole.dataset.holeIndex = i;
+
+                hole.innerHTML = `
+                    <div class="mole-wrapper absolute inset-0 flex flex-col items-center justify-end pb-1" id="mole-${i}">
+                        <div class="relative w-20 h-24 sm:w-28 sm:h-32 flex flex-col items-center pointer-events-none">
+                            <div class="absolute -top-1 w-full flex justify-between px-2">
+                                <div class="w-5 h-5 sm:w-6 sm:h-6 bg-amber-800 rounded-full border-2 border-amber-950"></div>
+                                <div class="w-5 h-5 sm:w-6 sm:h-6 bg-amber-800 rounded-full border-2 border-amber-950"></div>
+                            </div>
+                            <div class="w-16 h-18 sm:w-22 sm:h-24 bg-amber-700 rounded-t-full border-3 border-amber-950 flex flex-col items-center pt-2 relative shadow-md">
+                                <div class="flex gap-3 mb-1">
+                                    <div class="w-2.5 h-3.5 bg-black rounded-full border border-white flex items-start justify-end p-0.5">
+                                        <div class="w-1 h-1 bg-white rounded-full"></div>
+                                    </div>
+                                    <div class="w-2.5 h-3.5 bg-black rounded-full border border-white flex items-start justify-end p-0.5">
+                                        <div class="w-1 h-1 bg-white rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="w-6 h-4 bg-amber-300 rounded-full flex flex-col items-center justify-center -mt-1 border border-amber-800">
+                                    <div class="w-3 h-2 bg-amber-950 rounded-full"></div>
+                                </div>
+                                <div class="mole-badge absolute -bottom-2 bg-amber-300 text-amber-950 font-black text-xl sm:text-3xl px-3 py-0.5 rounded-2xl border-3 border-amber-900 shadow-xl font-game">
+                                    0
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                hole.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    handleMoleClick(i, e);
+                });
+
+                grid.appendChild(hole);
+            }
+        }
+
+        // Retract all moles back into holes
+        function retractAllMoles() {
+            clearTimeout(popUpLoopTimeout);
+            clearTimeout(hideTimeout);
+            for (let i = 0; i < HOLE_COUNT; i++) {
+                const mole = document.getElementById(`mole-${i}`);
+                if (mole) {
+                    mole.classList.remove('up', 'wrong-effect', 'hit-effect');
+                }
+            }
+        }
+
+        // Popup Mechanism (Random 2 to 6 Moles simultaneously)
+        function triggerMoleWave() {
+            retractAllMoles();
+
+            // Select between 2 and 6 active moles
+            const moleCountToPop = Math.floor(Math.random() * 5) + 2; // 2, 3, 4, 5, or 6
+            const availableHoles = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
+            activeMolesInHoles = availableHoles.slice(0, moleCountToPop);
+
+            const distractors = generateDistractors(currentProblem.answer, moleCountToPop - 1);
+            const values = [currentProblem.answer, ...distractors].sort(() => Math.random() - 0.5);
+
+            audio.playPop();
+
+            activeMolesInHoles.forEach((holeIdx, idx) => {
+                const mole = document.getElementById(`mole-${holeIdx}`);
+                const badge = mole.querySelector('.mole-badge');
+                const val = values[idx];
+
+                badge.textContent = val;
+                mole.dataset.value = val;
+                mole.classList.add('up');
+            });
+
+            isTransitioning = false;
+
+            hideTimeout = setTimeout(() => {
+                retractAllMoles();
+                popUpLoopTimeout = setTimeout(triggerMoleWave, 350);
+            }, POPUP_DURATION);
+        }
+
+        function showFloatingFeedback(x, y, text, isCorrect) {
+            const container = document.getElementById('feedback-layer');
+            const el = document.createElement('div');
+            el.className = `absolute text-2xl sm:text-4xl font-black font-game float-feedback ${isCorrect ? 'text-emerald-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : 'text-red-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'}`;
+            el.style.left = `${x - 20}px`;
+            el.style.top = `${y - 20}px`;
+            el.textContent = text;
+            container.appendChild(el);
+
+            setTimeout(() => {
+                el.remove();
+            }, 750);
+        }
+
+        // -------------------------------------------------------------
+        // Mole Hit Handling - Full Retract & Fresh Bounce on EVERY click
+        // -------------------------------------------------------------
+        function handleMoleClick(holeIdx, event) {
+            if (isTransitioning) return;
+
+            const mole = document.getElementById(`mole-${holeIdx}`);
+            if (!mole || !mole.classList.contains('up') || mole.classList.contains('hit-effect') || mole.classList.contains('wrong-effect')) return;
+
+            isTransitioning = true;
+            const clickedVal = parseInt(mole.dataset.value);
+            const clickX = event.clientX || (event.touches && event.touches[0].clientX) || window.innerWidth / 2;
+            const clickY = event.clientY || (event.touches && event.touches[0].clientY) || window.innerHeight / 2;
+
+            if (clickedVal === currentProblem.answer) {
+                // --- CORRECT ANSWER ---
+                audio.playHitCorrect();
+                score++;
+                document.getElementById('score-text').textContent = score;
+                document.getElementById('progress-bar').style.width = `${(score / TARGET_SCORE) * 100}%`;
+                showFloatingFeedback(clickX, clickY, "🎯 +1 答對!", true);
+
+                mole.classList.add('hit-effect');
+
+                if (score >= TARGET_SCORE) {
+                    setTimeout(winGame, 400);
+                    return;
+                }
+            } else {
+                // --- WRONG ANSWER ---
+                audio.playHitWrong();
+                misses++;
+                showFloatingFeedback(clickX, clickY, "❌ 答錯換題!", false);
+
+                mole.classList.add('wrong-effect');
+            }
+
+            // --- FOR BOTH CORRECT & WRONG: RETRACT ALL MOLES AND POP UP NEW ONES ---
+            clearTimeout(hideTimeout);
+            clearTimeout(popUpLoopTimeout);
+
+            // Wait brief moment for hit/miss effect, then retract all moles into holes
+            setTimeout(() => {
+                retractAllMoles();
+
+                // Switch to brand new question
+                currentProblem = generateMathProblem();
+                document.getElementById('question-text').textContent = currentProblem.text;
+
+                // Wait for retract animation to finish completely before popping up new wave
+                setTimeout(() => {
+                    triggerMoleWave();
+                }, 280);
+            }, 250);
+        }
+
+        function startGame() {
+            audio.init();
+            score = 0;
+            misses = 0;
+            isTransitioning = false;
+            document.getElementById('score-text').textContent = score;
+            document.getElementById('progress-bar').style.width = '0%';
+
+            document.getElementById('screen-start').classList.add('hidden');
+            document.getElementById('screen-victory').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('flex');
+
+            buildHolesGrid();
+
+            currentProblem = generateMathProblem();
+            document.getElementById('question-text').textContent = currentProblem.text;
+
+            startTime = Date.now();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                document.getElementById('time-text').textContent = elapsed;
+            }, 100);
+
+            triggerMoleWave();
+        }
+
+        function winGame() {
+            clearInterval(timerInterval);
+            clearTimeout(popUpLoopTimeout);
+            clearTimeout(hideTimeout);
+
+            audio.playVictory();
+
+            const finalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            document.getElementById('final-time').textContent = `${finalTime} 秒`;
+            document.getElementById('final-misses').textContent = `${misses} 次`;
+
+            const feedback = document.getElementById('feedback-text');
+            if (parseFloat(finalTime) <= 18 && misses === 0) {
+                feedback.textContent = "⚡ 太不可思议了！神級心算速度！";
+            } else if (parseFloat(finalTime) <= 30) {
+                feedback.textContent = "🌟 算得又快又準！太厲害了！";
+            } else {
+                feedback.textContent = "👍 順利通關！繼續練習速度會更快喔！";
+            }
+
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('flex');
+            document.getElementById('screen-victory').classList.remove('hidden');
+            document.getElementById('screen-victory').classList.add('flex');
+
+            launchConfetti();
+        }
+
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
+
+            for (let i = 0; i < 90; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 14,
+                    vy: (Math.random() - 0.7) * 14,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 8 + 4,
+                    gravity: 0.25,
+                    opacity: 1
+                });
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity;
+                    p.opacity -= 0.012;
+
+                    if (p.opacity > 0) {
+                        alive = true;
+                        ctx.globalAlpha = p.opacity;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+
+                if (alive) {
+                    requestAnimationFrame(render);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+
+            render();
+        }
+
+        document.getElementById('btn-start').addEventListener('click', startGame);
+        document.getElementById('btn-restart').addEventListener('click', startGame);
+
+        document.getElementById('btn-sound').addEventListener('click', () => {
+            const isEnabled = audio.toggleSound();
+            document.getElementById('btn-sound').textContent = isEnabled ? '🔊' : '🔇';
+        });
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            if (canvas) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        });
+    </script>
+</body>
+</html>
