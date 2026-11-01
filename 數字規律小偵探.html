@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Confetti 彩帶效果 -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- Google Fonts -->
+    <!-- Google Fonts - 圓體字風格適合兒童 -->
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -25,6 +25,7 @@
             0% { transform: translateY(0); }
             100% { transform: translateY(-8px); }
         }
+        /* 隱藏原生 number input 的微調按鈕 */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none;
@@ -51,7 +52,7 @@
             <div class="flex items-center gap-3">
                 <!-- 倒數計時器容器 -->
                 <div id="timerContainer" class="hidden flex items-center gap-1 bg-rose-100 border-2 border-rose-300 text-rose-700 px-3 py-1.5 rounded-full font-black text-lg">
-                    <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                    <i class="fa-solid font-bold fa-stopwatch animate-pulse"></i>
                     <span id="timerDisplay">60</span>s
                 </div>
 
@@ -110,8 +111,8 @@
                 </button>
             </div>
 
-            <!-- 提示顯示框 -->
-            <div id="hintBox" class="hidden w-full bg-sky-50 border-2 border-sky-200 text-sky-800 text-sm font-bold p-3 rounded-2xl text-center">
+            <!-- 提示顯示框 (預設隱藏) -->
+            <div id="hintBox" class="hidden w-full bg-sky-50 border-2 border-sky-200 text-sky-800 text-sm font-bold p-3 rounded-2xl text-center animate-fade-in">
                 💡 小提示：觀察連續出現的數字，算出後一個數字比前一個數字增加或減少了多少！
             </div>
 
@@ -168,7 +169,6 @@
         </div>
     </div>
 
-    <!-- 邏輯腳本 -->
     <script>
         let currentDifficulty = 'easy';
         let currentSequence = [];
@@ -258,10 +258,15 @@
             let isValid = false;
 
             while (!isValid) {
-                let startNum = 1;
-                // 若為 +2 / -2 規律，確保起始數為偶數，使整列皆為偶數
-                if (Math.abs(currentRule) === 2) {
-                    startNum = (Math.floor(Math.random() * 140) + 1) * 2;
+                const absRule = Math.abs(currentRule);
+
+                // 根據規律限制倍數
+                if (absRule === 2) {
+                    startNum = (Math.floor(Math.random() * 140) + 1) * 2; // 偶數
+                } else if (absRule === 5) {
+                    startNum = (Math.floor(Math.random() * 54) + 1) * 5;  // 5 的倍數
+                } else if (absRule === 10) {
+                    startNum = (Math.floor(Math.random() * 24) + 1) * 10; // 10 的倍數
                 } else {
                     startNum = Math.floor(Math.random() * 270) + 1;
                 }
@@ -283,7 +288,7 @@
                 }
             }
 
-            // 挖空 2~3 個位置，且保證至少有一對連續顯示數字
+            // 隨機挖空 2~3 個，且確保至少有一組相鄰已知數字
             let blankCount = Math.random() < 0.5 ? 2 : 3;
             let indices = [0, 1, 2, 3, 4, 5];
             
@@ -358,7 +363,6 @@
             }
 
             if (!activeInputId) return;
-
             const inputEl = document.getElementById(activeInputId);
             if (!inputEl) return;
 
