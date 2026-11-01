@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數字規律小偵探 - 數列闖關遊戲</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖標 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Confetti 彩帶效果 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #fef3c7 100%);
+            min-height: 100vh;
+        }
+        .bounce-short {
+            animation: bounce 0.5s ease infinite alternate;
+        }
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-8px); }
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-800 antialiased selection:bg-amber-200">
+
+    <!-- 頂部標頭與積分列 -->
+    <header class="bg-white/80 backdrop-blur-md border-b-4 border-amber-300 sticky top-0 z-10 px-4 py-3 shadow-sm">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🔍</span>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-amber-600 tracking-wide">數字規律小偵探</h1>
+                    <p class="text-xs text-slate-500 font-bold">低年級數學數列練習 (1~300)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- 倒數計時器容器 -->
+                <div id="timerContainer" class="hidden flex items-center gap-1 bg-rose-100 border-2 border-rose-300 text-rose-700 px-3 py-1.5 rounded-full font-black text-lg">
+                    <i class="fa-solid fa-stopwatch animate-pulse"></i>
+                    <span id="timerDisplay">60</span>s
+                </div>
+
+                <!-- 積分獎勵卡片 -->
+                <div class="bg-amber-100 border-2 border-amber-400 px-3 py-1.5 rounded-2xl flex items-center gap-2 shadow-inner">
+                    <span class="text-amber-500 text-xl bounce-short">⭐</span>
+                    <span class="font-black text-lg text-amber-800" id="scoreDisplay">0</span>
+                    <span class="text-xs text-amber-600 font-bold">分</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-between gap-6">
+
+        <!-- 設定與控制區 -->
+        <section class="bg-white/90 backdrop-blur rounded-3xl p-4 shadow-md border-2 border-amber-200 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- 難度選擇 -->
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-slate-600"><i class="fa-solid fa-layer-group text-amber-500"></i> 難度：</span>
+                <div class="inline-flex bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs sm:text-sm font-bold">
+                    <button onclick="setDifficulty('easy')" id="btn-easy" class="px-3 py-1.5 rounded-xl transition bg-amber-400 text-amber-950 shadow">🟢 簡單 (±1,2,5,10)</button>
+                    <button onclick="setDifficulty('medium')" id="btn-medium" class="px-3 py-1.5 rounded-xl transition text-slate-600 hover:text-slate-900">🟡 中等 (±3,4,6)</button>
+                    <button onclick="setDifficulty('hard')" id="btn-hard" class="px-3 py-1.5 rounded-xl transition text-slate-600 hover:text-slate-900">🔴 困難 (±7,8,9)</button>
+                </div>
+            </div>
+
+            <!-- 計時開關 -->
+            <div class="flex items-center gap-3 border-l-2 border-slate-200 pl-4">
+                <label class="flex items-center cursor-pointer gap-2 select-none">
+                    <input type="checkbox" id="timerToggle" onchange="toggleTimerSetting()" class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+                    <span class="text-sm font-bold text-slate-700">⏱️ 開啟計時</span>
+                </label>
+                <select id="timerDurationSelect" onchange="resetTimerValue()" class="bg-slate-100 border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-700">
+                    <option value="30">30 秒</option>
+                    <option value="60" selected>60 秒</option>
+                    <option value="90">90 秒</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- 遊戲主要卡片 -->
+        <section class="bg-white rounded-3xl p-6 shadow-xl border-4 border-amber-300 flex flex-col items-center gap-6 relative overflow-hidden">
+            
+            <!-- 題目說明與卡片輔助 -->
+            <div class="w-full flex items-center justify-between border-b-2 border-amber-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="bg-amber-400 text-amber-950 text-xs font-extrabold px-2.5 py-1 rounded-lg">題目</span>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-700">找出數列的規律，填入正確的數字吧！</h2>
+                </div>
+                <button onclick="showHint()" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold px-3 py-1.5 rounded-xl border border-sky-300 transition flex items-center gap-1">
+                    💡 需要提示
+                </button>
+            </div>
+
+            <!-- 提示顯示框 -->
+            <div id="hintBox" class="hidden w-full bg-sky-50 border-2 border-sky-200 text-sky-800 text-sm font-bold p-3 rounded-2xl text-center">
+                💡 小提示：觀察連續出現的數字，算出後一個數字比前一個數字增加或減少了多少！
+            </div>
+
+            <!-- 橫向 6 個數字卡片區域 (單一橫行，不跨列) -->
+            <div class="w-full overflow-x-auto py-4">
+                <div id="sequenceContainer" class="flex flex-row flex-nowrap justify-between items-center gap-2 sm:gap-3 min-w-[550px] px-2">
+                    <!-- 由 JavaScript 動態生成 6 個卡片 -->
+                </div>
+            </div>
+
+            <!-- 操作按鈕區 -->
+            <div class="w-full flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                <button onclick="checkAnswers()" class="w-full sm:w-auto px-10 py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black text-lg rounded-2xl shadow-lg border-b-4 border-emerald-700 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i> 檢查答案
+                </button>
+                <button onclick="generateQuestion()" class="w-full sm:w-auto px-6 py-3.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-base rounded-2xl border-2 border-slate-300 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 換一題
+                </button>
+            </div>
+        </section>
+
+        <!-- 虛擬小鍵盤 -->
+        <section class="bg-white/80 backdrop-blur rounded-3xl p-4 shadow-md border-2 border-amber-200">
+            <p class="text-xs font-bold text-slate-500 mb-2 text-center">點選畫面數字框後，可使用下方小鍵盤輸入數字：</p>
+            <div class="grid grid-cols-6 gap-2 max-w-md mx-auto">
+                <button onclick="pressKey('1')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">1</button>
+                <button onclick="pressKey('2')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">2</button>
+                <button onclick="pressKey('3')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">3</button>
+                <button onclick="pressKey('4')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">4</button>
+                <button onclick="pressKey('5')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">5</button>
+                <button onclick="pressKey('6')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">6</button>
+                <button onclick="pressKey('7')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">7</button>
+                <button onclick="pressKey('8')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">8</button>
+                <button onclick="pressKey('9')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">9</button>
+                <button onclick="pressKey('0')" class="py-2.5 bg-slate-100 hover:bg-amber-100 active:bg-amber-200 font-black text-lg text-slate-700 rounded-xl border border-slate-300 shadow-sm">0</button>
+                <button onclick="pressKey('clear')" class="col-span-2 py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-sm rounded-xl border border-rose-300 shadow-sm">清除 ⌫</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- 結果對話框 (Modal) -->
+    <div id="resultModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-4 border-amber-300 flex flex-col items-center text-center gap-4">
+            <div id="modalIcon" class="text-6xl">🎉</div>
+            <h3 id="modalTitle" class="text-2xl font-black text-slate-800">太棒了！答對囉！</h3>
+            
+            <div id="modalDetail" class="w-full bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-left text-sm text-slate-700 space-y-2 font-bold">
+                <!-- 動態注入解答說明 -->
+            </div>
+
+            <button onclick="closeFeedbackAndNext()" class="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-lg rounded-2xl shadow-md border-b-4 border-amber-600 transition">
+                繼續下一題 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- 邏輯腳本 -->
+    <script>
+        let currentDifficulty = 'easy';
+        let currentSequence = [];
+        let currentBlankIndices = [];
+        let currentRule = 0;
+        let score = 0;
+        let activeInputId = null;
+
+        let isTimerEnabled = false;
+        let timerSeconds = 60;
+        let timerInterval = null;
+
+        const rulesMap = {
+            easy: [1, -1, 2, -2, 5, -5, 10, -10],
+            medium: [3, -3, 4, -4, 6, -6],
+            hard: [7, -7, 8, -8, 9, -9]
+        };
+
+        window.onload = () => {
+            generateQuestion();
+        };
+
+        function setDifficulty(diff) {
+            currentDifficulty = diff;
+            ['easy', 'medium', 'hard'].forEach(d => {
+                const btn = document.getElementById(`btn-${d}`);
+                if (d === diff) {
+                    btn.className = "px-3 py-1.5 rounded-xl transition bg-amber-400 text-amber-950 shadow";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-xl transition text-slate-600 hover:text-slate-900";
+                }
+            });
+            generateQuestion();
+        }
+
+        function toggleTimerSetting() {
+            const toggle = document.getElementById('timerToggle');
+            const timerContainer = document.getElementById('timerContainer');
+            isTimerEnabled = toggle.checked;
+
+            if (isTimerEnabled) {
+                timerContainer.classList.remove('hidden');
+                startTimer();
+            } else {
+                timerContainer.classList.add('hidden');
+                clearInterval(timerInterval);
+            }
+        }
+
+        function resetTimerValue() {
+            const duration = parseInt(document.getElementById('timerDurationSelect').value);
+            timerSeconds = duration;
+            document.getElementById('timerDisplay').textContent = timerSeconds;
+            if (isTimerEnabled) {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            const duration = parseInt(document.getElementById('timerDurationSelect').value);
+            timerSeconds = duration;
+            document.getElementById('timerDisplay').textContent = timerSeconds;
+
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                document.getElementById('timerDisplay').textContent = timerSeconds;
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    alert('⏱️ 時間到！自動為你提交檢查！');
+                    checkAnswers();
+                }
+            }, 1000);
+        }
+
+        function generateQuestion() {
+            document.getElementById('hintBox').classList.add('hidden');
+            activeInputId = null;
+
+            if (isTimerEnabled) {
+                startTimer();
+            }
+
+            const availableRules = rulesMap[currentDifficulty];
+            currentRule = availableRules[Math.floor(Math.random() * availableRules.length)];
+
+            let isValid = false;
+
+            while (!isValid) {
+                let startNum = 1;
+                // 若為 +2 / -2 規律，確保起始數為偶數，使整列皆為偶數
+                if (Math.abs(currentRule) === 2) {
+                    startNum = (Math.floor(Math.random() * 140) + 1) * 2;
+                } else {
+                    startNum = Math.floor(Math.random() * 270) + 1;
+                }
+
+                currentSequence = [];
+                let validSequence = true;
+
+                for (let i = 0; i < 6; i++) {
+                    let num = startNum + (i * currentRule);
+                    if (num < 1 || num > 300) {
+                        validSequence = false;
+                        break;
+                    }
+                    currentSequence.push(num);
+                }
+
+                if (validSequence && currentSequence.length === 6) {
+                    isValid = true;
+                }
+            }
+
+            // 挖空 2~3 個位置，且保證至少有一對連續顯示數字
+            let blankCount = Math.random() < 0.5 ? 2 : 3;
+            let indices = [0, 1, 2, 3, 4, 5];
+            
+            let validBlanks = false;
+            while (!validBlanks) {
+                let shuffled = [...indices].sort(() => 0.5 - Math.random());
+                currentBlankIndices = shuffled.slice(0, blankCount);
+
+                let isShown = [true, true, true, true, true, true];
+                currentBlankIndices.forEach(idx => isShown[idx] = false);
+
+                let hasAdjacentShown = false;
+                for (let i = 0; i < 5; i++) {
+                    if (isShown[i] && isShown[i+1]) {
+                        hasAdjacentShown = true;
+                        break;
+                    }
+                }
+
+                if (hasAdjacentShown) {
+                    validBlanks = true;
+                }
+            }
+
+            renderSequence();
+        }
+
+        function renderSequence() {
+            const container = document.getElementById('sequenceContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 6; i++) {
+                const isBlank = currentBlankIndices.includes(i);
+                const card = document.createElement('div');
+                card.className = "flex-1 min-w-[75px] sm:min-w-[90px] h-24 sm:h-28 rounded-2xl border-4 flex flex-col items-center justify-center p-1 transition-all shadow-md relative";
+
+                if (isBlank) {
+                    card.className += " bg-amber-50 border-amber-400";
+                    card.innerHTML = `
+                        <span class="text-[10px] sm:text-xs font-black text-amber-500 mb-1">填填看</span>
+                        <input type="number" id="input-${i}" onfocus="setActiveInput('input-${i}')" 
+                            class="w-full text-center font-black text-xl sm:text-2xl text-amber-900 bg-white border-2 border-amber-300 rounded-xl py-1 focus:outline-none focus:ring-4 focus:ring-amber-300" placeholder="?">
+                    `;
+                } else {
+                    card.className += " bg-slate-100 border-slate-300";
+                    card.innerHTML = `
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 mb-1">第 ${i+1} 個</span>
+                        <span class="font-black text-2xl sm:text-3xl text-slate-800">${currentSequence[i]}</span>
+                    `;
+                }
+
+                container.appendChild(card);
+            }
+        }
+
+        function setActiveInput(id) {
+            activeInputId = id;
+        }
+
+        function pressKey(key) {
+            if (!activeInputId) {
+                for (let idx of currentBlankIndices) {
+                    const el = document.getElementById(`input-${idx}`);
+                    if (el && !el.value) {
+                        activeInputId = `input-${idx}`;
+                        break;
+                    }
+                }
+                if (!activeInputId && currentBlankIndices.length > 0) {
+                    activeInputId = `input-${currentBlankIndices[0]}`;
+                }
+            }
+
+            if (!activeInputId) return;
+
+            const inputEl = document.getElementById(activeInputId);
+            if (!inputEl) return;
+
+            if (key === 'clear') {
+                inputEl.value = '';
+            } else {
+                if (inputEl.value.length < 3) {
+                    inputEl.value += key;
+                }
+            }
+        }
+
+        function showHint() {
+            const hintBox = document.getElementById('hintBox');
+            let ruleText = currentRule > 0 ? `每次增加 ${currentRule}` : `每次減少 ${Math.abs(currentRule)}`;
+            hintBox.innerHTML = `💡 **小提示**：請觀察卡片上連續出現的兩個數字，這裡的規律是：**「${ruleText}」**喔！`;
+            hintBox.classList.remove('hidden');
+        }
+
+        function checkAnswers() {
+            clearInterval(timerInterval);
+
+            for (let idx of currentBlankIndices) {
+                const val = document.getElementById(`input-${idx}`).value.trim();
+                if (val === '') {
+                    alert('請先在所有空格中填入數字，再點擊檢查喔！');
+                    return;
+                }
+            }
+
+            let allCorrect = true;
+            let userAnswers = [];
+
+            currentBlankIndices.forEach(idx => {
+                const val = parseInt(document.getElementById(`input-${idx}`).value.trim());
+                const correctVal = currentSequence[idx];
+                userAnswers.push({ index: idx, userVal: val, correctVal: correctVal, isCorrect: val === correctVal });
+                if (val !== correctVal) {
+                    allCorrect = false;
+                }
+            });
+
+            showFeedbackModal(allCorrect, userAnswers);
+        }
+
+        function showFeedbackModal(isCorrect, answers) {
+            const modal = document.getElementById('resultModal');
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const detail = document.getElementById('modalDetail');
+
+            if (isCorrect) {
+                icon.textContent = "🎉";
+                title.textContent = "太棒了！全對囉！";
+                title.className = "text-2xl font-black text-emerald-600";
+                score += 10;
+                document.getElementById('scoreDisplay').textContent = score;
+
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                icon.textContent = "💪";
+                title.textContent = "差一點點，再接再厲！";
+                title.className = "text-2xl font-black text-rose-600";
+            }
+
+            let ruleDesc = currentRule > 0 ? `每一次增加 ${currentRule}` : `每一次減少 ${Math.abs(currentRule)}`;
+            let fullSeqStr = currentSequence.map((num, i) => {
+                if (currentBlankIndices.includes(i)) {
+                    return `<span class="underline text-amber-600 font-black">${num}</span>`;
+                }
+                return num;
+            }).join(' , ');
+
+            let html = `
+                <div class="mb-2 pb-2 border-b border-amber-200">
+                    <p class="text-xs text-slate-500">規律解密：</p>
+                    <p class="text-base text-amber-900 font-extrabold">👉 這個數列的變化是：<span class="text-rose-600">${ruleDesc}</span></p>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-500 mb-1">完整正確數列：</p>
+                    <p class="text-sm bg-white p-2 rounded-xl border border-amber-300 text-center font-bold tracking-wider">${fullSeqStr}</p>
+                </div>
+            `;
+
+            detail.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function closeFeedbackAndNext() {
+            document.getElementById('resultModal').classList.add('hidden');
+            generateQuestion();
+        }
+    </script>
+</body>
+</html>
